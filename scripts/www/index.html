@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>贵重物品记录</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f3ef;
+      --surface: #ffffff;
+      --border: #e8e4de;
+      --text: #1e1e1e;
+      --text-secondary: #8b857c;
+      --accent: #c8956c;
+      --accent-light: #f2e4d5;
+      --accent-dark: #a07050;
+      --danger: #d9605a;
+      --danger-bg: #fef0ef;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.04);
+      --shadow: 0 2px 12px rgba(0,0,0,.06);
+      --shadow-lg: 0 8px 30px rgba(0,0,0,.08);
+      --radius: 20px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+      --safe-bottom: env(safe-area-inset-bottom, 16px);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans SC', sans-serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: 0 16px;
+      padding-bottom: calc(80px + var(--safe-bottom));
+    }
+
+    /* ── Header ── */
+
+    .header {
+      padding: 40px 8px 8px;
+      position: relative;
+    }
+
+    .header-date {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      letter-spacing: .02em;
+      margin-bottom: 4px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      line-height: 1.2;
+      color: var(--text);
+    }
+
+    .header-sub {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      font-weight: 400;
+    }
+
+    /* ── Summary Strip ── */
+
+    .summary-strip {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .stat-card {
+      flex: 1;
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      letter-spacing: .02em;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+    }
+
+    .stat-value.accent { color: var(--accent); }
+
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ── Add Button ── */
+
+    .add-fab {
+      position: fixed;
+      bottom: calc(24px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 398px;
+      height: 52px;
+      background: var(--text);
+      color: #fff;
+      border: none;
+      border-radius: 26px;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: .01em;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+      transition: all .2s ease;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .add-fab:active {
+      transform: translateX(-50%) scale(.97);
+      box-shadow: 0 2px 10px rgba(0,0,0,.1);
+    }
+
+    /* ── Modal Overlay ── */
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .overlay.show { display: flex; }
+
+    .overlay.animating-in .sheet { animation: slideUp .3s cubic-bezier(.32,.72,0,1) both; }
+    .overlay.animating-out .sheet { animation: slideDown .25s cubic-bezier(.32,.72,0,1) both; }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    @keyframes slideDown {
+      from { transform: translateY(0); }
+      to { transform: translateY(100%); }
+    }
+
+    .sheet {
+      background: var(--surface);
+      width: 100%;
+      max-width: 430px;
+      border-radius: 24px 24px 0 0;
+      padding: 12px 20px 24px;
+      padding-bottom: calc(24px + var(--safe-bottom));
+      box-shadow: var(--shadow-lg);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      background: #d5d0c8;
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+
+    .sheet h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: -.01em;
+    }
+
+    .form-field {
+      margin-bottom: 16px;
+    }
+
+    .form-field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      letter-spacing: .01em;
+    }
+
+    .form-field input,
+    .form-field textarea {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .form-field textarea {
+      resize: vertical;
+      min-height: 68px;
+    }
+
+    .form-field input:focus,
+    .form-field textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+
+    .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .sheet-submit {
+      width: 100%;
+      height: 48px;
+      background: var(--text);
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all .2s ease;
+    }
+
+    .sheet-submit:active {
+      transform: scale(.97);
+    }
+
+    /* ── Item List ── */
+
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-bottom: 8px;
+    }
+
+    .item {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      animation: itemIn .35s ease both;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .item:active {
+      transform: scale(.985);
+    }
+
+    @keyframes itemIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+
+    .item-name {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+      word-break: break-all;
+    }
+
+    .item-delete {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
+      border: none;
+      background: var(--danger-bg);
+      color: var(--danger);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 8px;
+      transition: all .2s ease;
+    }
+
+    .item-delete:active {
+      background: #fdd;
+      transform: scale(.9);
+    }
+
+    .item-note {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 10px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .item-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .item-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--accent-light);
+      color: var(--accent-dark);
+      letter-spacing: .01em;
+    }
+
+    .item-days {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .item-metrics {
+      display: flex;
+      gap: 24px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .item-metric {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .item-metric-label {
+      font-size: 10px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      font-weight: 500;
+    }
+
+    .item-metric-value {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+    }
+
+    .item-metric-value.accent { color: var(--accent); }
+
+    /* ── Empty State ── */
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: .6;
+    }
+
+    .empty h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .empty p {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Confirm Dialog ── */
+
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .confirm-overlay.show { display: flex; }
+
+    .confirm-dialog {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      animation: popIn .25s cubic-bezier(.32,.72,0,1) both;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .confirm-dialog h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .confirm-dialog p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .confirm-btn {
+      flex: 1;
+      height: 44px;
+      border-radius: 22px;
+      border: none;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+
+    .confirm-btn:active { transform: scale(.96); }
+
+    .confirm-btn.cancel {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .confirm-btn.delete {
+      background: var(--danger);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-date" id="todayDate"></div>
+      <h1>贵重物品记录</h1>
+      <p class="header-sub">追踪每一笔重要消费的日常成本</p>
+    </header>
+
+    <div class="summary-strip" id="summary" style="display:none">
+      <div class="stat-card">
+        <div class="stat-label">物品总数</div>
+        <div class="stat-value accent" id="count">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">总投入</div>
+        <div class="stat-value" id="total">¥0</div>
+        <div class="stat-sub">累计消费金额</div>
+      </div>
+    </div>
+
+    <div class="item-list" id="list"></div>
+  </div>
+
+  <!-- Bottom FAB -->
+  <button class="add-fab" id="addFab" onclick="openSheet()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    添加物品
+  </button>
+
+  <!-- Add Sheet -->
+  <div class="overlay" id="overlay" onclick="closeSheet(event)">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <h2 id="sheetTitle">添加贵重物品</h2>
+      <div class="form-field">
+        <label>物品名称 *</label>
+        <input type="text" id="name" placeholder="例如：MacBook Pro M4" autocomplete="off">
+      </div>
+      <div class="form-row-2">
+        <div class="form-field">
+          <label>购买日期 *</label>
+          <input type="date" id="date">
+        </div>
+        <div class="form-field">
+          <label>价格 (元) *</label>
+          <input type="number" id="price" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+        </div>
+      </div>
+      <div class="form-field">
+        <label>备注</label>
+        <textarea id="note" placeholder="购买渠道、型号、用途等…" maxlength="200"></textarea>
+      </div>
+      <button class="sheet-submit" id="submitBtn" onclick="handleSubmit()">确认添加</button>
+    </div>
+  </div>
+
+  <!-- Delete Confirm -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-dialog">
+      <h3>确认删除</h3>
+      <p id="confirmText">确定要删除这件物品吗？</p>
+      <div class="confirm-actions">
+        <button class="confirm-btn cancel" onclick="cancelDelete()">取消</button>
+        <button class="confirm-btn delete" onclick="confirmDelete()">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'valuable_items_v2';
+    let items = [];
+    let editingId = null;
+    let pendingDeleteId = null;
+
+    // ── Init ──
+
+    function load() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try { items = JSON.parse(raw); } catch(e) { items = []; }
+      }
+      // Ensure all items have note field (migration from v1)
+      items = items.map(i => ({ note: '', ...i }));
+      items.sort((a, b) => new Date(b.date) - new Date(a.date));
+      render();
+      updateTodayDate();
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function updateTodayDate() {
+      const now = new Date();
+      const days = ['日','一','二','三','四','五','六'];
+      document.getElementById('todayDate').textContent =
+        `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 星期${days[now.getDay()]}`;
+    }
+
+    // ── Helpers ──
+
+    function formatCurrency(n) {
+      return '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatCompact(n) {
+      if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+      return '¥' + n.toLocaleString('zh-CN');
+    }
+
+    function daysSince(dateStr) {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const dMid = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const nMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return Math.max(0, Math.floor((nMid - dMid) / (1000 * 60 * 60 * 24)));
+    }
+
+    // ── Sheet ──
+
+    function openSheet(id) {
+      const overlay = document.getElementById('overlay');
+      const title = document.getElementById('sheetTitle');
+      const submitBtn = document.getElementById('submitBtn');
+      document.getElementById('name').value = '';
+      document.getElementById('date').value = '';
+      document.getElementById('price').value = '';
+      document.getElementById('note').value = '';
+
+      if (id) {
+        editingId = id;
+        const item = items.find(i => i.id === id);
+        if (item) {
+          document.getElementById('name').value = item.name;
+          document.getElementById('date').value = item.date;
+          document.getElementById('price').value = item.price;
+          document.getElementById('note').value = item.note || '';
+          title.textContent = '编辑物品';
+          submitBtn.textContent = '保存修改';
+        }
+      } else {
+        editingId = null;
+        title.textContent = '添加贵重物品';
+        submitBtn.textContent = '确认添加';
+      }
+
+      overlay.classList.add('show', 'animating-in');
+      overlay.classList.remove('animating-out');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => document.getElementById(editingId ? 'name' : 'name').focus(), 300);
+    }
+
+    function closeSheet(e) {
+      if (e && e.target !== document.getElementById('overlay')) return;
+      const overlay = document.getElementById('overlay');
+      overlay.classList.remove('animating-in');
+      overlay.classList.add('animating-out');
+      setTimeout(() => {
+        overlay.classList.remove('show', 'animating-out');
+        document.body.style.overflow = '';
+      }, 250);
+    }
+
+    function handleSubmit() {
+      const name = document.getElementById('name').value.trim();
+      const date = document.getElementById('date').value;
+      const price = parseFloat(document.getElementById('price').value);
+      const note = document.getElementById('note').value.trim();
+
+      if (!name || !date || isNaN(price) || price <= 0) {
+        // Shake animation hint
+        const fields = [document.getElementById('name'), document.getElementById('date'), document.getElementById('price')];
+        fields.forEach(el => {
+          if ((el.id === 'name' && !name) || (el.id === 'date' && !date) || (el.id === 'price' && (isNaN(price) || price <= 0))) {
+            el.style.borderColor = 'var(--danger)';
+            el.style.boxShadow = '0 0 0 3px rgba(217,96,90,.15)';
+            setTimeout(() => { el.style.borderColor = ''; el.style.boxShadow = ''; }, 800);
+          }
+        });
+        return;
+      }
+
+      if (editingId) {
+        const item = items.find(i => i.id === editingId);
+        if (item) { item.name = name; item.date = date; item.price = price; item.note = note; }
+      } else {
+        items.push({ id: Date.now(), name, date, price, note });
+      }
+
+      items.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      save();
+      render();
+      closeSheet();
+    }
+
+    // ── Delete ──
+
+    function askDelete(id, e) {
+      if (e) e.stopPropagation();
+      pendingDeleteId = id;
+      const item = items.find(i => i.id === id);
+      document.getElementById('confirmText').textContent =
+        `确定要删除"${item ? item.name : ''}"吗？此操作不可撤销。`;
+      document.getElementById('confirmOverlay').classList.add('show');
+    }
+
+    function cancelDelete() {
+      pendingDeleteId = null;
+      document.getElementById('confirmOverlay').classList.remove('show');
+    }
+
+    function confirmDelete() {
+      if (pendingDeleteId) {
+        items = items.filter(i => i.id !== pendingDeleteId);
+        save();
+        render();
+      }
+      pendingDeleteId = null;
+      document.getElementById('confirmOverlay').classList.remove('show');
+    }
+
+    // ── Render ──
+
+    function render() {
+      const list = document.getElementById('list');
+      const summary = document.getElementById('summary');
+      const count = document.getElementById('count');
+      const total = document.getElementById('total');
+
+      if (items.length === 0) {
+        list.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">💎</div>
+            <h3>暂无记录</h3>
+            <p>点击下方按钮<br>添加你的第一件贵重物品</p>
+          </div>`;
+        summary.style.display = 'none';
+        return;
+      }
+
+      const totalPrice = items.reduce((s, i) => s + i.price, 0);
+      summary.style.display = 'flex';
+      count.textContent = items.length;
+      total.textContent = totalPrice >= 10000 ? formatCompact(totalPrice) : formatCurrency(totalPrice);
+
+      list.innerHTML = items.map((item, idx) => {
+        const days = daysSince(item.date);
+        const daily = days > 0 ? (item.price / days) : item.price;
+
+        const noteHtml = item.note
+          ? `<div class="item-note">${escapeHtml(item.note)}</div>`
+          : '';
+
+        return `
+          <div class="item" style="animation-delay:${idx * 0.03}s" onclick="openSheet(${item.id})">
+            <div class="item-top">
+              <div class="item-name">${escapeHtml(item.name)}</div>
+              <button class="item-delete" onclick="askDelete(${item.id}, event)" title="删除">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+            ${noteHtml}
+            <div class="item-meta">
+              <span class="item-tag">${formatCurrency(item.price)}</span>
+              <span class="item-days">${item.date} · 已 ${days} 天</span>
+            </div>
+            <div class="item-metrics">
+              <div class="item-metric">
+                <span class="item-metric-label">日均成本</span>
+                <span class="item-metric-value accent">
+                  ${days === 0 ? formatCurrency(daily) : formatCurrency(daily)}
+                </span>
+              </div>
+              <div class="item-metric">
+                <span class="item-metric-label">总投入</span>
+                <span class="item-metric-value">${formatCurrency(item.price)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ── Keyboard ──
+
+    document.getElementById('price').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleSubmit();
+    });
+
+    document.getElementById('note').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>
